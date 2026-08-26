@@ -1,0 +1,18 @@
+# Data lake — nunca versionar dados
+lake/
+*.csv
+*.parquet
+
+# Segredos
+.env
+
+# Python
+__pycache__/
+.ipynb_checkpoints/
+
+# Airflow
+logs/
+airflow.db
+
+# SO
+.DS_Store
