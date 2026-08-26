@@ -1,0 +1,9 @@
+services:
+  jupyter:
+    image: quay.io/jupyter/pyspark-notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/home/jovyan/work
+    environment:
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
