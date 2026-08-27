@@ -134,13 +134,40 @@ O projeto é desenvolvido em fases, versionadas por tags no Git:
 
 ## 🚀 Como executar
 
-> ⚠️ Em construção — as instruções de execução serão preenchidas conforme o ambiente é finalizado. O objetivo final é que o pipeline suba com um único `docker compose up`.
+### Pré-requisitos
+- [Docker](https://www.docker.com/) e Docker Compose
+- Em Windows, recomenda-se rodar sobre **WSL2**
+
+### Passo a passo
+
+1. Clone o repositório:
+   ```bash
+   git clone git@github.com:rldclaro/projeto-anac.git
+   cd projeto-anac
+   ```
+
+2. Crie um arquivo `.env` na raiz do projeto com o token de acesso ao Jupyter:
+   ```
+   JUPYTER_TOKEN=escolha-um-token
+   ```
+   > O `.env` não é versionado (está no `.gitignore`), pois guarda configuração local. Cada pessoa define o seu.
+
+3. Suba o ambiente:
+   ```bash
+   docker compose up
+   ```
+
+4. Acesse o JupyterLab em `http://localhost:8888/lab`, usando o token definido no `.env`.
+
+Para encerrar o ambiente, use `docker compose down`.
 
 ---
 
 ## 📊 Fonte de dados
 
 Dados públicos da **Agência Nacional de Aviação Civil (ANAC)**, disponíveis no portal de Dados e Estatísticas da agência. Os arquivos são de uso público, publicados mensalmente em formato CSV.
+
+A estrutura, tipos e regras de qualidade esperadas da fonte estão documentados no [contrato de dados](docs/contrato-de-dados.md).
 
 ---
 
