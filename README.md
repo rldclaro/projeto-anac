@@ -126,6 +126,7 @@ O projeto é desenvolvido em fases, versionadas por tags no Git:
 ### Extensões planejadas
 - Migração para nuvem (object storage + processamento gerenciado)
 - Trilha Kubernetes (KubernetesExecutor + Helm)
+- **Databricks como reforço:** reimplementar o pipeline (ou parte dele) no Databricks Free Edition, comparando a experiência com a construção "na mão" — evidencia domínio dos fundamentos que a plataforma abstrai
 - dbt na camada ouro
 - CI/CD com GitHub Actions
 
