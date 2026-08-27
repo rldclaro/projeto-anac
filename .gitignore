@@ -1,5 +1,6 @@
 # Data lake — nunca versionar dados
 lake/
+dados-brutos/
 *.csv
 *.parquet
 
@@ -14,5 +15,10 @@ __pycache__/
 logs/
 airflow.db
 
-# SO
+# Sistema operacional
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
