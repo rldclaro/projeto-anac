@@ -1,6 +1,6 @@
 services:
   jupyter:
-    image: quay.io/jupyter/pyspark-notebook
+    image: quay.io/jupyter/pyspark-notebook:2025-11-29
     ports:
       - "8888:8888"
     volumes:
