@@ -11,7 +11,7 @@
 
 ## 📌 Sobre o projeto
 
-Os dados de voos da ANAC são um caso realista de engenharia de dados: arquivos mensais publicados ao longo de mais de duas décadas, com **schema que muda ao longo do tempo**, encoding legado, separadores e formatos numéricos no padrão brasileiro, e valores ausentes em campos que deveriam ser obrigatórios.
+Os dados de voos da ANAC são um caso realista de engenharia de dados: arquivos publicados ao longo de mais de duas décadas, com encoding legado, separadores e formatos numéricos no padrão brasileiro, nomes de coluna com acentos e caracteres especiais, e valores ausentes em campos que deveriam ser obrigatórios.
 
 Este projeto constrói um pipeline completo que transforma esses arquivos crus em um **modelo dimensional pronto para análise**, respondendo perguntas como:
 
@@ -29,11 +29,11 @@ O objetivo é duplo: **consolidar práticas de engenharia de dados fora de um am
 O pipeline segue a **arquitetura medalhão**, com três camadas de refinamento progressivo:
 
 ```
-   Fonte ANAC (CSV mensal)
+   Fonte ANAC (CSV anual)
             │
             ▼
    ┌─────────────────┐
-   │     INGESTÃO    │  download parametrizado por ano/mês
+   │     INGESTÃO    │  leitura dos CSVs baixados, parametrizada por ano
    └─────────────────┘
             │
             ▼
@@ -55,17 +55,17 @@ O pipeline segue a **arquitetura medalhão**, com três camadas de refinamento p
       Análise / SQL / Dashboard
 ```
 
-**Grão de partição:** `ano=YYYY/mes=MM` em todas as camadas — casa com o formato nativo da fonte, permite backfill granular e reprocessamento de um mês específico sem afetar o resto.
+**Grão de partição:** o Bronze particiona por `ano=YYYY`, espelhando o arquivo de origem; a Prata e o Ouro refinam para `ano=YYYY/mes=MM`, o grão de consumo e reprocessamento. Quebrar o ano em meses já é uma transformação, por isso acontece na Prata, não na ingestão fiel do Bronze.
 
 ### Princípios de engenharia aplicados
 
 | Princípio | Como é garantido |
 |---|---|
-| **Idempotência** | Reprocessar o mesmo mês produz o mesmo resultado (escrita por partição / `MERGE`) |
+| **Idempotência** | Reprocessar o mesmo período produz o mesmo resultado (escrita por partição com `replaceWhere` / `MERGE`) |
 | **Reprocessabilidade** | Bronze preserva o dado cru; qualquer regra nova pode ser reaplicada do zero |
 | **Data lógica** | Todo processamento é parametrizado por data de referência, nunca por "hoje" |
 | **Qualidade** | Testes de schema, volume, domínio e unicidade antes de promover camada |
-| **Rastreabilidade** | Metadados de ingestão e tabela de auditoria por execução |
+| **Rastreabilidade** | Metadados de ingestão (`_data_ingestao`, `_arquivo_origem`) gravados em cada linha |
 
 ---
 
@@ -73,15 +73,15 @@ O pipeline segue a **arquitetura medalhão**, com três camadas de refinamento p
 
 | Camada | Tecnologia |
 |---|---|
-| Processamento | **PySpark** |
-| Formato de tabela | **Delta Lake** (ACID, time travel, schema evolution) |
+| Processamento | **PySpark** (Spark 4.0.1) |
+| Formato de tabela | **Delta Lake** (ACID, time travel, column mapping) |
 | Orquestração | **Apache Airflow** |
 | Análise | **SQL** |
 | Ambiente | **Docker / Docker Compose** sobre **WSL2** |
 | Versionamento | **Git / GitHub** |
 | Linguagem | **Python** |
 
-> A escolha por Docker Compose (em vez de um ambiente gerenciado ou Kubernetes) é **proposital**: o projeto expõe deliberadamente a orquestração, o particionamento e o gerenciamento de estado que plataformas gerenciadas abstraem — que é justamente o que se pretende praticar. Uma migração para Kubernetes está mapeada como extensão.
+> A escolha por Docker Compose (em vez de um ambiente gerenciado ou Kubernetes) é **proposital**: o projeto expõe deliberadamente a orquestração, o particionamento e o gerenciamento de estado que plataformas gerenciadas abstraem, que é justamente o que se pretende praticar. Uma migração para Kubernetes está mapeada como extensão.
 
 ---
 
@@ -91,9 +91,9 @@ O pipeline segue a **arquitetura medalhão**, com três camadas de refinamento p
 
 ```
 projeto-anac/
-├── docker/                 # Dockerfile e docker-compose.yml
+├── docker/                 # spark-defaults.conf (pacote e extensões Delta)
 ├── src/
-│   ├── ingestao/           # download + escrita no bronze
+│   ├── ingestao/           # leitura dos CSVs + escrita no bronze
 │   ├── transformacao/      # bronze → prata → ouro
 │   ├── qualidade/          # validações de dados
 │   └── utils/              # config, logging, helpers
@@ -103,10 +103,12 @@ projeto-anac/
 ├── docs/
 │   ├── contrato-de-dados.md
 │   └── arquitetura.md
+├── dados-brutos/           # CSVs baixados da ANAC (fora do versionamento)
 ├── lake/                   # data lake local (fora do versionamento)
 │   ├── bronze/
 │   ├── prata/
 │   └── ouro/
+├── docker-compose.yml
 ├── .gitignore
 └── README.md
 ```
@@ -117,7 +119,7 @@ projeto-anac/
 
 O projeto é desenvolvido em fases, versionadas por tags no Git:
 
-- [ ] **`v0.1` — Bronze:** ingestão parametrizada e escrita do dado cru
+- [x] **`v0.1` — Bronze:** ingestão parametrizada e escrita do dado cru ✅
 - [ ] **`v0.2` — Prata:** padronização de schema, limpeza e idempotência
 - [ ] **`v0.3` — Ouro:** modelo dimensional (fatos e dimensões)
 - [ ] **`v0.4` — Airflow:** pipeline orquestrado com backfill
@@ -126,7 +128,7 @@ O projeto é desenvolvido em fases, versionadas por tags no Git:
 ### Extensões planejadas
 - Migração para nuvem (object storage + processamento gerenciado)
 - Trilha Kubernetes (KubernetesExecutor + Helm)
-- **Databricks como reforço:** reimplementar o pipeline (ou parte dele) no Databricks Free Edition, comparando a experiência com a construção "na mão" — evidencia domínio dos fundamentos que a plataforma abstrai
+- **Databricks como reforço:** reimplementar o pipeline (ou parte dele) no Databricks Free Edition, comparando a experiência com a construção "na mão", evidenciando domínio dos fundamentos que a plataforma abstrai
 - dbt na camada ouro
 - CI/CD com GitHub Actions
 
@@ -152,12 +154,34 @@ O projeto é desenvolvido em fases, versionadas por tags no Git:
    ```
    > O `.env` não é versionado (está no `.gitignore`), pois guarda configuração local. Cada pessoa define o seu.
 
-3. Suba o ambiente:
+3. Baixe os dados da ANAC (ver seção [Aquisição dos dados](#aquisição-dos-dados)) e coloque os CSVs em `dados-brutos/{ano}.csv`.
+
+4. Suba o ambiente:
    ```bash
    docker compose up
    ```
 
-4. Acesse o JupyterLab em `http://localhost:8888/lab`, usando o token definido no `.env`.
+5. Acesse o JupyterLab em `http://localhost:8888/lab`, usando o token definido no `.env`.
+
+### Executando a ingestão Bronze
+
+Com o ambiente no ar, a ingestão de um ano específico é feita por `spark-submit`:
+
+```bash
+docker compose exec jupyter spark-submit \
+  /home/jovyan/work/src/ingestao/ingestao_bronze.py 2000
+```
+
+O ano entra como parâmetro (data lógica), e a escrita é idempotente: reprocessar o mesmo ano substitui apenas a partição correspondente, sem duplicar.
+
+Para carregar todo o histórico de uma vez (backfill):
+
+```bash
+for ano in $(seq 2000 2026); do
+  docker compose exec jupyter spark-submit \
+    /home/jovyan/work/src/ingestao/ingestao_bronze.py $ano
+done
+```
 
 Para encerrar o ambiente, use `docker compose down`.
 
@@ -165,9 +189,15 @@ Para encerrar o ambiente, use `docker compose down`.
 
 ## 📊 Fonte de dados
 
-Dados públicos da **Agência Nacional de Aviação Civil (ANAC)**, disponíveis no portal de Dados e Estatísticas da agência. Os arquivos são de uso público, publicados mensalmente em formato CSV.
+Dados públicos da **Agência Nacional de Aviação Civil (ANAC)**, disponíveis no portal de Dados e Estatísticas da agência. Os arquivos são de uso público, publicados em formato CSV, subdivididos por ano.
 
 A estrutura, tipos e regras de qualidade esperadas da fonte estão documentados no [contrato de dados](docs/contrato-de-dados.md).
+
+### Aquisição dos dados
+
+O portal da ANAC protege o download contra automação (desafio anti-bot), o que impede baixar os CSVs via script diretamente. Por isso, a **aquisição** dos arquivos é feita manualmente (download dos CSVs anuais pelo portal), enquanto todo o **processamento** a partir daí é automatizado e reproduzível.
+
+Essa separação é deliberada: aquisição e processamento são responsabilidades distintas. A limitação está na fonte, não no pipeline, que roda de ponta a ponta sobre os arquivos já baixados, colocados em `dados-brutos/{ano}.csv`.
 
 ---
 
