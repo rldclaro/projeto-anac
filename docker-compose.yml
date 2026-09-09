@@ -5,5 +5,6 @@ services:
       - "8888:8888"
     volumes:
       - .:/home/jovyan/work
+      - ./docker/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
     environment:
       - JUPYTER_TOKEN=${JUPYTER_TOKEN}
